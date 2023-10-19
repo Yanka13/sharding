@@ -1,0 +1,87 @@
+# $DEL_BEGIN
+
+services:
+  eu_web:
+    build:
+      context: .
+      dockerfile: dockerfile-fastapi
+    restart: on-failure
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./tweets_api:/app/tweets_api
+    environment:
+      - POSTGRES_DATABASE_URL=postgresql+psycopg2://europe:eupassword@eu-db:5432/eutweets
+      - TWEETS_TABLE=eutweets
+    command: ["uvicorn", "tweets_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    networks:
+      - europe
+    depends_on:
+      - eu-db
+
+  eu-db:
+    image: postgres:14.9
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "pg_isready" , "-U" ,"postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./database/:/docker-entrypoint-initdb.d/
+    ports:
+      - "5400:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - APP_DB_USER=europe
+      - APP_DB_PASS=eupassword
+      - APP_DB_NAME=eutweets
+    networks:
+      - europe
+
+  us_web:
+    build:
+      context: .
+      dockerfile: dockerfile-fastapi
+    restart: on-failure
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./tweets_api:/app/tweets_api
+    environment:
+      - POSTGRES_DATABASE_URL=postgresql+psycopg2://usa:uspassword@us_db:5432/ustweets
+      - TWEETS_TABLE=ustweets
+    command: ["uvicorn", "tweets_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    networks:
+      - usa
+    depends_on:
+      - us_db
+
+  us_db:
+    image: postgres:14.9
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./database/:/docker-entrypoint-initdb.d/
+    ports:
+      - "5401:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - APP_DB_USER=usa
+      - APP_DB_PASS=uspassword
+      - APP_DB_NAME=ustweets
+    networks:
+      - usa
+
+networks:
+  europe:
+    driver: bridge
+  usa:
+    driver: bridge
+# $DEL_END
